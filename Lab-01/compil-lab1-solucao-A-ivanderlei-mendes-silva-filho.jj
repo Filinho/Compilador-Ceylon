@@ -1,0 +1,174 @@
+options {
+  STATIC = false;
+}
+
+PARSER_BEGIN(CeylonLexer)
+import java.io.*;
+import java.lang.reflect.*;
+import java.util.*;
+
+public class CeylonLexer {
+  private static final Map<Integer, String> TOKEN_KIND_NAMES = buildTokenKindNames();
+
+  private static Map<Integer, String> buildTokenKindNames() {
+    Map<Integer, String> names = new HashMap<>();
+    for (Field field : CeylonLexerConstants.class.getFields()) {
+      int modifiers = field.getModifiers();
+      if (Modifier.isStatic(modifiers) && Modifier.isFinal(modifiers) && field.getType() == int.class) {
+        try {
+          names.put(field.getInt(null), field.getName());
+        } catch (IllegalAccessException ignored) {
+          // Ignore inaccessible fields and use fallback names.
+        }
+      }
+    }
+    return names;
+  }
+
+  public static void main(String[] args) throws Exception {
+    if (args.length < 1) {
+       System.out.println("Uso: java CeylonLexer <arquivo>");
+       return;
+    }
+    CeylonLexer lexer = new CeylonLexer(new FileInputStream(args[0]));
+    Token token;
+
+    while ((token = lexer.getNextToken()).kind != CeylonLexerConstants.EOF) {
+      String tokenName = TOKEN_KIND_NAMES.get(token.kind);
+      if (tokenName == null) {
+        String imageName = CeylonLexerConstants.tokenImage[token.kind];
+        tokenName = (imageName == null) ? ("TOKEN_" + token.kind) : imageName.replaceAll("[<>\"]", "").toUpperCase();
+      }
+      System.out.println(tokenName + " " + token.image);
+    }
+  }
+}
+PARSER_END(CeylonLexer)
+
+/* --- SKIP --- */
+SKIP : {
+  " " | "\t" | "\n" | "\r"
+| <"//" (~["\n","\r"])* ("\n"|"\r"|"\r\n")?>
+| <"/*" (~["*"])* "*" (~["/"] (~["*"])* "*")* "/">
+}
+
+/* --- KEYWORDS: DECLARATION --- */
+TOKEN : {
+  < KW_SHARED: "shared" >
+| < KW_VARIABLE: "variable" >
+| < KW_VALUE: "value" >
+| < KW_VOID: "void" >
+| < KW_FUNCTION: "function" >
+| < KW_CLASS: "class" >
+| < KW_INTERFACE: "interface" >
+| < KW_OBJECT: "object" >
+| < KW_ASSIGN: "assign" >
+| < KW_ABSTRACT: "abstract" >
+| < KW_ACTUAL: "actual" >
+| < KW_FORMAL: "formal" >
+| < KW_DEFAULT: "default" >
+| < KW_IMPORT: "import" >
+| < KW_PACKAGE: "package" >
+| < KW_MODULE: "module" >
+}
+
+/* --- KEYWORDS: CONTROL & LOGIC --- */
+TOKEN : {
+  < KW_IF: "if" >
+| < KW_ELSE: "else" >
+| < KW_SWITCH: "switch" >
+| < KW_CASE: "case" >
+| < KW_FOR: "for" >
+| < KW_WHILE: "while" >
+| < KW_IN: "in" >
+| < KW_RETURN: "return" >
+| < KW_BREAK: "break" >
+| < KW_CONTINUE: "continue" >
+| < KW_TRY: "try" >
+| < KW_CATCH: "catch" >
+| < KW_FINALLY: "finally" >
+| < KW_THROW: "throw" >
+| < KW_IS: "is" >
+| < KW_EXISTS: "exists" >
+| < KW_NONEMPTY: "nonempty" >
+}
+
+/* --- TYPES --- */
+TOKEN : {
+  < TYPE_INTEGER: "Integer" >
+| < TYPE_FLOAT: "Float" >
+| < TYPE_STRING: "String" >
+| < TYPE_CHAR: "Character" >
+| < TYPE_BOOLEAN: "Boolean" >
+| < TYPE_BYTE: "Byte" >
+| < TYPE_ANYTHING: "Anything" >
+| < TYPE_OBJECT: "Object" >
+| < TYPE_NULL: "Null" >
+| < TYPE_LIST: "List" >
+| < TYPE_MAP: "Map" >
+}
+
+/* --- OPERATORS (Compostos antes de simples) --- */
+TOKEN : {
+  < OP_SAFE_MEMBER: "?." >
+| < OP_SPREAD_MEMBER: "*." >
+| < OP_ENTRY: "->" >
+| < OP_VARIABLE_ASSIGN: ":=" >
+| < OP_ADD_ASSIGN: "+=" >
+| < OP_SUB_ASSIGN: "-=" >
+| < OP_MUL_ASSIGN: "*=" >
+| < OP_DIV_ASSIGN: "/=" >
+| < OP_EQUAL: "==" >
+| < OP_NOT_EQUAL: "!=" >
+| < OP_LESS_EQUAL: "<=" >
+| < OP_GREATER_EQUAL: ">=" >
+| < OP_COMPARE: "<=>" >
+| < OP_DEFAULT: "??" >
+| < OP_RANGE: ".." >
+| < OP_SEGMENT: "..." >
+| < OP_TYPE_CANON: "::" >
+| < OP_INCREMENT: "++" >
+| < OP_DECREMENT: "--" >
+| < OP_SPECIFY: "=" >
+| < OP_MEMBER: "." >
+| < OP_ADD: "+" >
+| < OP_SUB: "-" >
+| < OP_MUL: "*" >
+| < OP_DIV: "/" >
+| < OP_REMAINDER: "%" >
+| < OP_POWER: "^" >
+| < OP_AND: "&&" >
+| < OP_OR: "||" >
+| < OP_NOT: "!" >
+| < OP_LESS: "<" >
+| < OP_GREATER: ">" >
+}
+
+/* --- DELIMITERS --- */
+TOKEN : {
+  < L_PAREN: "(" >
+| < R_PAREN: ")" >
+| < L_BRACKET: "[" >
+| < R_BRACKET: "]" >
+| < L_BRACE: "{" >
+| < R_BRACE: "}" >
+| < COMMA: "," >
+| < SEMICOLON: ";" >
+| < COLON: ":" >
+| < QUESTION_MARK: "?" >
+}
+
+/* --- CONSTANTS & LITERALS --- */
+TOKEN : {
+  < LIT_TRUE: "true" >
+| < LIT_FALSE: "false" >
+| < LIT_NULL: "null" >
+| < LIT_FLOAT: (["0"-"9"])+ "." (["0"-"9"])+ (["e","E"] (["+","-"])? (["0"-"9"])+)? >
+| < LIT_INT: (["0"-"9"])+ >
+| < LIT_STRING: "\"" (~["\"", "\\", "\n", "\r"] | "\\" (["n", "t", "b", "r", "f", "\\", "'", "\""]))* "\"" >
+}
+
+/* --- IDENTIFIER  --- */
+TOKEN : {
+  < ID: (["a"-"z", "A"-"Z", "_"]) (["a"-"z", "A"-"Z", "0"-"9", "_"])* >
+}
